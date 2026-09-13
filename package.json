@@ -1,0 +1,9 @@
+{
+  "name": "deccan-birders-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Standalone Vercel serverless API for Deccan Birders (eBird, Google Calendar, YouTube)",
+  "engines": {
+    "node": ">=18"
+  }
+}
