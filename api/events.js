@@ -21,15 +21,31 @@ module.exports = async (req, res) => {
       return;
     }
 
+    const scope = req.query.scope === 'past' ? 'past' : 'upcoming';
+    const now   = new Date();
+
+    // Past: bounded to the last 12 months so a long-lived calendar doesn't
+    // return its entire history. Google only supports ascending order by
+    // startTime, so we ask ascending and reverse for most-recent-first.
+    const oneYearAgo = new Date(now);
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+    const rangeParams = scope === 'past'
+      ? `timeMin=${oneYearAgo.toISOString()}&timeMax=${now.toISOString()}&maxResults=50`
+      : `timeMin=${now.toISOString()}&maxResults=12`;
+
     const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CAL_ID)}/events`
-      + `?key=${API_KEY}&timeMin=${new Date().toISOString()}&singleEvents=true&orderBy=startTime&maxResults=12`;
+      + `?key=${API_KEY}&singleEvents=true&orderBy=startTime&${rangeParams}`;
 
     const raw = await fetch(url).then(r => r.json());
     if (raw.error) {
       res.json({ error: true, message: raw.error.message || 'Google Calendar API error' });
       return;
     }
-    const data = (raw.items || []).map(e => ({
+    let items = raw.items || [];
+    if (scope === 'past') items = items.reverse();
+
+    const data = items.map(e => ({
       id:         e.id,
       title:      e.summary || '',
       place:      e.location || '',
@@ -40,7 +56,7 @@ module.exports = async (req, res) => {
       fee:        extractFee(e.description)
     }));
 
-    res.setHeader('Cache-Control', 'public, s-maxage=3600');
+    res.setHeader('Cache-Control', `public, s-maxage=${scope === 'past' ? 21600 : 3600}`);
     res.json({ data });
   } catch (e) {
     res.json({ error: true, message: e.message });
