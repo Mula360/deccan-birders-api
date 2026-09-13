@@ -28,6 +28,10 @@ module.exports = async (req, res) => {
     }
 
     const chRes = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id=${CH_ID}&key=${YT_KEY}`).then(r => r.json());
+    if (chRes.error || !chRes.items || !chRes.items.length) {
+      res.json({ error: true, message: (chRes.error && chRes.error.message) || 'YouTube channel not found' });
+      return;
+    }
     const uploadsId = chRes.items[0].contentDetails.relatedPlaylists.uploads;
 
     const plRes = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadsId}&maxResults=12&key=${YT_KEY}`).then(r => r.json());

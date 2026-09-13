@@ -25,6 +25,10 @@ module.exports = async (req, res) => {
       + `?key=${API_KEY}&timeMin=${new Date().toISOString()}&singleEvents=true&orderBy=startTime&maxResults=12`;
 
     const raw = await fetch(url).then(r => r.json());
+    if (raw.error) {
+      res.json({ error: true, message: raw.error.message || 'Google Calendar API error' });
+      return;
+    }
     const data = (raw.items || []).map(e => ({
       id:         e.id,
       title:      e.summary || '',
