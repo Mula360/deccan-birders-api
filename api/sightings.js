@@ -38,7 +38,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const region = req.query.region || 'IN-TG';
+    const region = req.query.region || 'IN';
     const tab = req.query.tab;
 
     if (tab === 'recent') {
