@@ -72,6 +72,29 @@ module.exports = async (req, res) => {
       return;
     }
 
+    // Every species ever recorded in the region, name and code only. The
+    // site's species lookup searches this so that a bird nobody has
+    // reported lately is still findable — it can then say "no records in
+    // the last 30 days" and link to eBird, rather than claiming no such
+    // species exists. India is ~1,400 of the taxonomy's ~17,000 rows.
+    if (tab === 'taxonomy') {
+      const [codes, taxonomy] = await Promise.all([
+        ebird(`/product/spplist/${region}`),
+        ebird('/ref/taxonomy/ebird?fmt=json&cat=species'),
+      ]);
+      if (!Array.isArray(codes) || !Array.isArray(taxonomy)) {
+        res.status(502).json({ error: true, message: 'eBird did not return a species list' });
+        return;
+      }
+      const wanted = new Set(codes);
+      const data = taxonomy
+        .filter(t => wanted.has(t.speciesCode))
+        .map(t => ({ species: t.comName, scientific: t.sciName, speciesCode: t.speciesCode }));
+      res.setHeader('Cache-Control', 'public, s-maxage=604800, stale-while-revalidate=86400');
+      res.json({ data });
+      return;
+    }
+
     if (tab === 'hotspot_species') {
       const { locId } = req.query;
       const data = await ebird(`/product/spplist/${locId}`);
