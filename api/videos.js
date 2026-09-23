@@ -1,3 +1,4 @@
+const { authorize } = require('./_auth');
 const CH_ID = process.env.YOUTUBE_CHANNEL_ID;
 const YT_KEY = process.env.YOUTUBE_API_KEY;
 
@@ -20,6 +21,7 @@ function formatViews(n) {
 
 module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+  if (!authorize(req, res)) return;
 
   try {
     if (!CH_ID) {

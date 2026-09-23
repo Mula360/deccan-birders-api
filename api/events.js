@@ -1,3 +1,4 @@
+const { authorize } = require('./_auth');
 const CAL_ID = process.env.GOOGLE_CALENDAR_ID;
 const API_KEY = process.env.GOOGLE_API_KEY;
 
@@ -14,6 +15,7 @@ function extractFee(desc) {
 
 module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+  if (!authorize(req, res)) return;
 
   try {
     if (!CAL_ID) {

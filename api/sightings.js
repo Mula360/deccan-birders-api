@@ -1,3 +1,4 @@
+const { authorize } = require('./_auth');
 const KEY = process.env.EBIRD_API_KEY;
 const BASE = 'https://api.ebird.org/v2';
 const headers = { 'X-eBirdApiToken': KEY };
@@ -34,6 +35,7 @@ const MOCK = [
 
 module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+  if (!authorize(req, res)) return;
 
   try {
     if (!KEY) {
