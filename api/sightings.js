@@ -11,6 +11,9 @@ function mapRecord(r) {
   return {
     species:    r.comName,
     scientific: r.sciName,
+    // eBird's own code for the species ("indpit1"). The site uses it to
+    // link a record through to that species' page on ebird.org.
+    speciesCode: r.speciesCode,
     count:      r.howMany ?? '?',
     locality:   r.locName,
     locId:      r.locId,
@@ -42,7 +45,10 @@ module.exports = async (req, res) => {
     const tab = req.query.tab;
 
     if (tab === 'recent') {
-      const data = await ebird(`/data/obs/${region}/recent?back=14`);
+      // 30 days is eBird's maximum for this endpoint. The species lookup
+      // on the site searches this feed, so the window is also how far
+      // back "where can I see it now" can see.
+      const data = await ebird(`/data/obs/${region}/recent?back=30`);
       res.setHeader('Cache-Control', 'public, s-maxage=900, stale-while-revalidate=1800');
       res.json({ data: data.map(mapRecord) });
       return;
@@ -95,13 +101,26 @@ module.exports = async (req, res) => {
 
     if (tab === 'lookup') {
       const { speciesCode } = req.query;
-      const data = await ebird(`/data/nearest/geo/recent/${speciesCode}?lat=17.385&lng=78.4867&dist=500`);
+      if (!speciesCode) {
+        res.status(400).json({ error: true, message: 'speciesCode is required' });
+        return;
+      }
+      // dist is capped at 50 km by eBird and back at 30 days; asking for
+      // more makes it return an error object rather than a list.
+      const data = await ebird(`/data/nearest/geo/recent/${speciesCode}?lat=17.385&lng=78.4867&dist=50&back=30`);
+      if (!Array.isArray(data)) {
+        res.status(502).json({ error: true, message: data.errors?.[0]?.title || 'eBird rejected the request' });
+        return;
+      }
       res.setHeader('Cache-Control', 'public, s-maxage=900');
       res.json({ data: data.map(mapRecord) });
       return;
     }
 
-    res.json({ mock: true, data: MOCK });
+    // An unknown tab used to fall through to MOCK, which handed the site
+    // four invented sightings that looked entirely real. Mock data is for
+    // a missing API key during setup, not for a typo in a query string.
+    res.status(400).json({ error: true, message: `Unknown tab: ${tab || '(none)'}` });
   } catch (e) {
     res.json({ error: true, message: e.message });
   }
